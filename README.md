@@ -497,3 +497,82 @@ hasil pada hari senin jam 12.30
 
 hasil pada hari jumat
 ![first](image/6.harijumat.png)
+
+### Soal 7
+> Karena terdapat 2 WebServer, kalian diminta agar setiap client yang mengakses Sein dengan Port 80 akan didistribusikan secara bergantian pada Sein dan Stark secara berurutan dan request dari client yang mengakses Stark dengan port 443 akan didistribusikan secara bergantian pada Sein dan Stark secara berurutan
+
+#### Jawaban
+Lakukan perintah seperti di bawah ini pada Heiter.
+
+```shell
+iptables -t nat -N NO_7
+iptables -A NO_7 -t nat -p tcp --dport 80 -d 192.174.8.2 -m statistic --mode nth --every 2 --packet 0 -j DNAT --to-destination 192.174.8.2
+iptables -A NO_7 -t nat -p tcp --dport 80 -d 192.174.8.2 -j DNAT --to-destination 192.174.14.146
+iptables -t nat -A PREROUTING -j NO_7
+```
+
+Kemudian jalankan perintah di bawah ini pada Frieren
+
+```shell
+iptables -t nat -N NO_7
+iptables -A NO_7 -t nat -p tcp --dport 443 -d 192.174.14.146 -m statistic --mode nth --every 2 --packet 0 -j DNAT --to-destination 192.174.8.2
+iptables -A NO_7 -t nat -p tcp --dport 443 -d 192.174.14.146 -j DNAT --to-destination 192.174.14.146
+iptables -t nat -A PREROUTING -j NO_7
+```
+Lalu untuk melakukan pengetesan Heiter (port 80), jalankan script berikut ini di Sein 
+
+```shell
+while true; do nc -l -p 80 -c 'echo "Sein"';
+```
+Kemudian jalankan script berikut ini di Stark
+
+```shell
+while true; do nc -l -p 80 -c 'echo "Stark"'
+```
+Lalu di Sein/Stark jalankan ```nc 192.174.8.2 80``` 
+
+Selanjutnya untuk melakukan pengetesan Frieren (port 443) sama saja seperti di atas tinggal ubah 80 menjadi 443.
+
+### Soal 8
+> Karena berbeda koalisi politik, maka subnet dengan masyarakat yang berada pada Revolte dilarang keras mengakses WebServer hingga masa pencoblosan pemilu kepala suku 2024 berakhir. Masa pemilu (hingga pemungutan dan penghitungan suara selesai) kepala suku bersamaan dengan masa pemilu Presiden dan Wakil Presiden Indonesia 2024.
+
+#### Jawaban
+Pasa node Frieren, jalankan perintah ini
+
+```shell
+iptables -N NO_8
+iptables -A NO_8 -s 192.174.14.140/30 -d 192.174.8.2 -m time --datestop 2024-06-27 -j DROP
+iptables -A NO_8 -s 192.174.14.140/30 -d 192.174.14.146 -m time --datestop 2024-06-27 -j DROP
+iptables -A FORWARD -j NO_8
+```
+
+Lalu test dengan mengubah date sesuai yang diminta pada soal.
+
+### Soal 9
+> Sadar akan adanya potensial saling serang antar kubu politik, maka WebServer harus dapat secara otomatis memblokir  alamat IP yang melakukan scanning port dalam jumlah banyak (maksimal 20 scan port) di dalam selang waktu 10 menit. 
+(clue: test dengan nmap)
+
+### Jawaban
+Pada Sein dan Stark jalankan seperti di bawah ini.
+
+```shell
+iptables -N NO_9
+iptables -A NO_9 -m recent --name scan --update --seconds 600 --hitcount 20 -j DROP
+iptables -A NO_9 -m recent --name scan --set -j ACCEPT
+iptables -A INPUT -j NO_9
+```
+Kemudian untuk testing kita dapat melakukan dengan cara:
+- Pada TurkRegion lakukan perintah ```date --set="20 Dec 2023 13.00"``` 
+- Kemudian ping Sein ```ping 192.174.8.2``` 
+
+### Soal 10
+> Karena kepala suku ingin tau paket apa saja yang di-drop, maka di setiap node server dan router ditambahkan logging paket yang di-drop dengan standard syslog level. 
+
+#### Jawaban
+
+Diperlukan pencatatan log, oleh karena itu, untuk semua aturan iptables yang menggunakan opsi -j DROP, tambahkan aturan tambahan dengan batasan yang sama, namun menggunakan opsi -j LOG sebelum perintah untuk menolak.
+
+Tetapi pada nomor 10 ini, kami tidak dapat menemukan file Log, akan tetapi jika kita ngecek menggunakan ```iptables -L -v``` akan ditemukan Log nya.
+
+
+
